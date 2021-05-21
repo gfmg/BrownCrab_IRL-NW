@@ -1,6 +1,6 @@
 # Brown Crab_IRL-NW :crab:
 
-This repository contains teh analysis for the stock assessment of Brown Crab (*Cancer pagurus*) in the North West of Ireland. 
+This repository contains the analysis carried for the stock assessment of Brown Crab (*Cancer pagurus*) in the North West of Ireland. 
 
 The scripts include the development of: 
 * Data collation / cleaning
