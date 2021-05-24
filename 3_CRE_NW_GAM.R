@@ -53,7 +53,7 @@ dat<-CRE_NW_14[, which(names(CRE_NW_14) %in% c("EventStartDate",
 # Implement the most complex GAM
 gam_1<-gam(Retained_Kg ~ 1 + fYear + 
              offset(Log.Effort) + 
-             s(SoakDays,bs="cs",k=8) + 
+             s(SoakDays,bs="cs",k=8) + #k=8 results in good smooth pattern
              s(fVesselID,bs="re"),
            data = dat,
            family=Gamma(link="log"),
