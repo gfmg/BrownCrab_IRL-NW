@@ -7,4 +7,4 @@ The scripts include the development of:
 * Development of two independent standarized indices of abundance
 * Implementation of different scenario of the Stochastic Surplus Production Model in Continuous Time (SPiCT) (https://github.com/DTUAqua/spict)
 
-Several scripts stil under development
+Several scripts still in progress
