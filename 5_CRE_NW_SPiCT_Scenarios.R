@@ -19,8 +19,8 @@ dataDir<-"C:/Users/ggonzales/Desktop/gmartin_work_folder/Stock_Assessment/CRE/No
 load(file.path(dataDir,"CRE_NW_ObsC.RData")) #NW CRE landings
 
 #load(file.path(dataDir,"CRE_NW_ObsI_gam1_Allvessels.RData")) # NW CRE index from gam_1
-load(file.path(dataDir,"CRE_NW_ObsI_gam1_Above8m.RData")) # NW CRE index from gam_1
-load(file.path(dataDir,"CRE_NW_ObsI_gam1_quarter_Above8m.RData")) #NW_CRE_Quarterly based
+load(file.path(dataDir,"CRE_NW_ObsI_gam1_Target.RData")) # NW CRE index from gam_1
+load(file.path(dataDir,"CRE_NW_ObsI_gam1_quarter_Target.RData")) #NW_CRE_Quarterly based
 
 #Load INLA seasonal index:
 load(file.path(dataDir,"CRE_NW_I4_Offshore_ar1_index.RData")) #NW_Crab_index from offshore vessels. Model I3
