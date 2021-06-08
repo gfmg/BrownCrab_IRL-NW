@@ -3,7 +3,9 @@
 # Template Created: Tue Apr 13 12:55:04 2021
 # ---------------------------------------------------------------------------
 # Description:
-# Modeling the SVP CRE_NW data for index standarization
+# Standardizing the time series Landings per Unit of Effort (LPUE) of 
+# Cancer pagurus from the Sentinel Vessel fleet program in the North West of 
+# Ireland  
 # ---------------------------------------------------------------------------
 rm(list = ls())
 
