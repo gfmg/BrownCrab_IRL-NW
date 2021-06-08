@@ -315,11 +315,11 @@ for (s in 1:n.sce) {
 # Model diagnosis: 
 
 # Convergence
-res.pos[[10]][[3]]
+res.pos[[9]][[3]]
 
 
 #Normality/ Autocorrelation
-plotspict.diagnostic(calc.osa.resid(res.pos[[10]][[3]]))
+plotspict.diagnostic(calc.osa.resid(res.pos[[8]][[3]]))
 
 #Retrospective 
 fit<-retro(res.pos[[10]][[3]])
@@ -330,7 +330,7 @@ mohns_rho(fit, what = c("FFmsy", "BBmsy"))
 all(is.finite(res.pos[[10]]$sd))
 
 #Realistic production curve
-calc.bmsyk(res.pos[[9]][[3]])
+calc.bmsyk(res.pos[[5]][[3]])
 
 # Magnitude difference
 calc.om(res.pos[[10]][[3]])
@@ -342,7 +342,7 @@ fit$check.ini$resmat
 
 
 # Results
-plotspict.data(res.pos[[8]][[2]])
+plotspict.data(res.pos[[6]][[2]])
 plot(res.pos[[10]][[3]])
 res.pos[[9]][[3]]
 plot_production(res.pos[[1]][[3]], plot_it = T)  
