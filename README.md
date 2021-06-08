@@ -5,7 +5,7 @@ This repository contains the analysis carried for the stock assessment of Brown 
 The scripts include the development of: 
 * Data collation / cleaning 
 * Development of two independent standarized indices of abundance
-  * 
+  * tuyhg\seyh
 * Implementation of different scenario of the Stochastic Surplus Production Model in Continuous Time (SPiCT) (https://github.com/DTUAqua/spict)
 
 Several scripts still in progress
