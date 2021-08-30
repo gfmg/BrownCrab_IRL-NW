@@ -3,13 +3,11 @@
 # Template Created: Tue Apr 13 12:55:04 2021
 # ---------------------------------------------------------------------------
 # Description:
-# Standardizing the time series Landings per Unit of Effort (LPUE) of 
-# Cancer pagurus from the Sentinel Vessel fleet program in the North West of 
-# Ireland  
+# Modeling the SVP CRE_NW data for index standarization
 # ---------------------------------------------------------------------------
 rm(list = ls())
 
-
+library(ggplot2)
 library(mgcv)
 library(ggsci)
 
@@ -55,7 +53,7 @@ dat<-CRE_NW_14[, which(names(CRE_NW_14) %in% c("EventStartDate",
 # Implement the most complex GAM
 gam_1<-gam(Retained_Kg ~ 1 + fYear + 
              offset(Log.Effort) + 
-             s(SoakDays,bs="cs",k=8) + #k=8 results in good smooth pattern
+             s(SoakDays,bs="cs",k=8) + 
              s(fVesselID,bs="re"),
            data = dat,
            family=Gamma(link="log"),
@@ -180,7 +178,7 @@ ggplot(Obs_I1,aes(x=fYear,y=mu.r,group=1))+geom_point()+geom_line()+
   geom_ribbon(aes(ymin=ci.low.r,ymax=ci.up.r),alpha=.5) + theme_bw()
 
 #save(Obs_I1,file =file.path(dataDir, 
-#                          "CRE_NW_ObsI_gam1_Target.RData"))
+#                          "CRE_NW_ObsI_gam1_Above8m.RData"))
 
 
 # Dataset for predictions Quarter level -----------------------------------
@@ -215,7 +213,7 @@ ggplot(Obs_I1_Q,aes(x=YQ,y=mu.r,group=1))+geom_point()+geom_line()+
 
 
 #save(Obs_I1_Q,file =file.path(dataDir, 
-#                          "CRE_NW_ObsI_gam1_quarter_Target.RData"))
+#                          "CRE_NW_ObsI_gam1_quarter_Above8m.RData"))
 
 
 
@@ -259,30 +257,40 @@ Obs_I2<-predDat2[,c("Year","mu.r","ci.low.r","ci.up.r")]
 
 # Plot standardized indexes ------------------------------------------------
 
-# Scale index of LPUE
+# Scale index of LPUE fixed
 Obs_I1$mu.std<-Obs_I1$mu.r/mean(Obs_I1$mu.r)
 Obs_I1$ci.low.std<-Obs_I1$ci.low.r/mean(Obs_I1$mu.r)
 Obs_I1$ci.up.std<-Obs_I1$ci.up.r/mean(Obs_I1$mu.r)
 Obs_I1$model<-"gam_fixed"
+names(Obs_I1)[names(Obs_I1) %in% "fYear"]<-"Year"
+
+# Scale index of LPUE smooth
+Obs_I2$mu.std<-Obs_I2$mu.r/mean(Obs_I2$mu.r)
+Obs_I2$ci.low.std<-Obs_I2$ci.low.r/mean(Obs_I2$mu.r)
+Obs_I2$ci.up.std<-Obs_I2$ci.up.r/mean(Obs_I2$mu.r)
+Obs_I2$model<-"gam_smooth"
+
+Obs_I<-rbind(Obs_I1,Obs_I2)
 
 # Raw LPUE
 dat$LPUE<-dat$Retained_Kg/dat$Effort
 raw_index<-aggregate(LPUE~fYear,dat,FUN=mean)
 raw_index$mu.std<-raw_index$LPUE/mean(raw_index$LPUE)
 raw_index$model<-"nominal"
+names(raw_index)[names(raw_index) %in% "fYear"]<-"Year"
 
 
-index<-ggplot(data = Obs_I1,aes(x=fYear,y=mu.std,group=model,
+index<-ggplot(data = Obs_I,aes(x=Year,y=mu.std,group=model,
                             colour=model,
                             fill=model))+
   geom_ribbon(aes(ymin=ci.low.std,ymax=ci.up.std),alpha=.1)+
-  geom_point(aes(shape=model))+
-  geom_line()+
+  geom_point(aes(shape=model),size=2)+
+  geom_line(size=1)+
   scale_fill_lancet()+
   scale_colour_lancet()
 
 index+
-  geom_point(data = raw_index,aes(x=fYear,y=mu.std),
+  geom_point(data = raw_index,aes(x=Year,y=mu.std),
              size=2,shape=7,colour="black")+
   labs(y="Standarized index",x= "Year", fill="Model", colour="Model",
        shape="Model")+
@@ -290,7 +298,10 @@ index+
   scale_y_continuous(limits = c(0,2))+
   theme(axis.title = element_text(size=14),
         axis.text = element_text(size=11),
-        panel.grid = element_blank())
+        axis.text.x = element_text(angle=45,hjust = 1),
+        legend.text = element_text(size=12),
+        legend.title = element_text(size=14),
+        axis.title.x = element_blank())
 
 aggregate(fVesselID~fYear,dat,FUN=function(x)length(unique(x)))
 # Only 3 boats in 2008...

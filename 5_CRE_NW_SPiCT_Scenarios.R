@@ -9,14 +9,17 @@
 rm(list = ls())
 
 library(spict)
-library(ggplot2)
+library(ggplot2);theme_set(theme_bw())
+library(ggpubr)
+library(corrplot)
 
 
-
-dataDir<-"C:/Users/ggonzales/Desktop/gmartin_work_folder/Stock_Assessment/CRE/NorthWest_SPiCT/Data/SPiCT"
+dataDir<-file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/Stock_Assessment",
+                   "/CRE/NorthWest_SPiCT/Data/SPiCT")
 
 # Load data
 load(file.path(dataDir,"CRE_NW_ObsC.RData")) #NW CRE landings
+load(file.path(dataDir,"CRE_NW_ObsC_Reconstructed.RData")) #Reconstructed NW CRE landings based on lm
 
 #load(file.path(dataDir,"CRE_NW_ObsI_gam1_Allvessels.RData")) # NW CRE index from gam_1
 load(file.path(dataDir,"CRE_NW_ObsI_gam1_Target.RData")) # NW CRE index from gam_1
@@ -28,7 +31,12 @@ load(file.path(dataDir,"CRE_NW_I4_Offshore_ar1_index.RData")) #NW_Crab_index fro
 #Additional plots from Paul Boch to check uncertainty
 source(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
                  "Stock_Assessment/CRE/NorthWest_SPiCT/SPiCT",
-                 "cockle spict trial v2.R"))
+                 "production_uncertainty_pb.R"))
+
+#Additional function to compare production curves:
+source(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
+                 "Stock_Assessment/CRE/NorthWest_SPiCT/SPiCT",
+                 "extractspict.production.R"))
 
 # Data prep ---------------------------------------------------------------
 
@@ -36,8 +44,15 @@ source(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
 NW_Landings<-subset(NW_Landings,!Year %in% 2020) #Remove 2020 data
 CRE_NW_Landings<-aggregate(Landings_ton_CRE~Year,data = NW_Landings,FUN = sum)
 
+# Sum all landings by countries in reconstructed data
+NW_LandingsL<-subset(NW_LandingsL,!Year %in% 2020) #Remove 2020 data
+CRE_NW_LandingsR<-aggregate(Landings_ton_CRE~Year,data = NW_LandingsL,FUN = sum)
+
+
 # Catch series Year to numeric
 CRE_NW_Landings$Year<-as.integer(as.character(CRE_NW_Landings$Year))
+CRE_NW_LandingsR$Year<-as.integer(as.character(CRE_NW_LandingsR$Year))
+
 
 # Scale indices of LPUE
 Obs_I1$mu.std<-Obs_I1$mu.r/mean(Obs_I1$mu.r)
@@ -73,18 +88,24 @@ Obs_I_gam1_Above8m_Q<-Obs_I_gam1_Above8m_Q[order(Obs_I_gam1_Above8m_Q$Year),]
 # Ohsshore index year as numeric
 I4_index$Year<-as.integer(as.character(I4_index$fYear))
 
+
 # SPiCT function ----------------------------------------------------------
 fit.SPICT.Scenarios<-function(Scenarios) {
   inp <- list()
   
-  #Landings 
-  inp$obsC <- CRE_NW_Landings$Landings_ton_CRE 
-  inp$timeC <- CRE_NW_Landings$Year
-  
   if(Scenarios=="F.1"){
     scenario<-"F.1"
+    # Description: Landings from 2002 onward. Only index from the SVP fleet removing the 
+    # outlier year 2008.
     
-    # Remove 2008 from time series as seems unreliable
+    #Landings: 
+    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:40] 
+    inp$timeC <- CRE_NW_Landings$Year[23:40] 
+    
+    # only index from 2006 (more reliable)
+    Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
+    
+    # Remove 2008 from SVP time series as seems unreliable
     Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year != 2008)
     
     inp$timeI <- list()
@@ -92,14 +113,22 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     
     inp$obsI <- list()
     inp$obsI[[1]] <- Obs_I_gam1_Above8m$mu.std
+    
+
   }
   if(Scenarios=="F.2"){
     scenario<-"F.2"
     
-    # Only index from 2006 (more reliable)
+    # Description: Same as F.1 but fixing the surplus production curve to be symmetrical
+    
+    #Landings: 
+    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:40] 
+    inp$timeC <- CRE_NW_Landings$Year[23:40] 
+    
+    # only index from 2006 (more reliable)
     Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
     
-    # Remove 2008 from time series as seems unreliable
+    # Remove 2008 from SVP time series as seems unreliable
     Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year != 2008)
     
     inp$timeI <- list()
@@ -107,54 +136,97 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     
     inp$obsI <- list()
     inp$obsI[[1]] <- Obs_I_gam1_Above8m$mu.std
+    
+    #fix the surplus production curve to be symmetrical - optional
+    inp$ini$logn <- log(2)
+    inp$phases$logn <- -1
+    
   }
   if(Scenarios=="F.3"){
     scenario<-"F.3"
-    #Adding offshore index at start of time series
-
+    # Description: Same as F.2 but including a prior for the biomass depletion level
+    
+    #Landings: 
+    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:40] 
+    inp$timeC <- CRE_NW_Landings$Year[23:40] 
+    
     # only index from 2006 (more reliable)
     Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
     
-    # Remove 2008 from time series as seems unreliable
+    # Remove 2008 from SVP time series as seems unreliable
     Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year != 2008)
     
     inp$timeI <- list()
     inp$timeI[[1]] <- Obs_I_gam1_Above8m$Year+0.5
-    inp$timeI[[2]] <- I4_index$Year+0.5
     
     inp$obsI <- list()
     inp$obsI[[1]] <- Obs_I_gam1_Above8m$mu.std
-    inp$obsI[[2]] <- I4_index$mu.std
+    
+    #fix the surplus production curve to be symmetrical - optional
+    inp$ini$logn <- log(2)
+    inp$phases$logn <- -1
+    
+    ### a prior for the initial biomass depletion - can help if guessable 
+    inp$priors$logbkfrac <- c(log(0.8), 0.5, 1) #Low or no exploitation before beginning of available data
+    
   }
   if(Scenarios=="F.4"){
     scenario<-"F.4"
-    #Using quarterly index
+    # Description: Same as F.3 but increasing uncertainty in the first years of landings data
     
-    inp$timeI <- list()
-    inp$timeI[[1]] <- Obs_I_gam1_Above8m_Q$YQ
-    inp$timeI[[2]] <- I4_index$Year+0.5
+    #Landings: 
+    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:40] 
+    inp$timeC <- CRE_NW_Landings$Year[23:40] 
     
-    inp$obsI <- list()
-    inp$obsI[[1]] <- Obs_I_gam1_Above8m_Q$mu.std
-    inp$obsI[[2]] <- I4_index$mu.std
-  }
-  if(Scenarios=="F.5"){
-    scenario<-"F.5"
+    inp$stdevfacC <- rep(1, length(inp$obsC)) 
+    inp$stdevfacC[1:5] <- 2 #Extra uncertainty in the first 5 years of landings
     
     # only index from 2006 (more reliable)
     Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
     
-    # Remove 2008 from time series as seems unreliable
+    # Remove 2008 from SVP time series as seems unreliable
     Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year != 2008)
-    
     
     inp$timeI <- list()
     inp$timeI[[1]] <- Obs_I_gam1_Above8m$Year+0.5
-    inp$timeI[[2]] <- I4_index$Year+0.5
     
     inp$obsI <- list()
     inp$obsI[[1]] <- Obs_I_gam1_Above8m$mu.std
-    inp$obsI[[2]] <- I4_index$mu.std
+    
+    #fix the surplus production curve to be symmetrical - optional
+    inp$ini$logn <- log(2)
+    inp$phases$logn <- -1
+    
+    ### a prior for the initial biomass depletion - can help if guessable 
+    inp$priors$logbkfrac <- c(log(0.8), 0.5, 1) #Low or no exploitation before beginning of available data
+    
+  }
+  if(Scenarios=="F.5"){
+    scenario<-"F.5"
+    # Description: Same as F.4 but increasing uncertainty in the time series of landings
+    
+    #Landings: 
+    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:40] 
+    inp$timeC <- CRE_NW_Landings$Year[23:40] 
+    
+    inp$stdevfacC <- rep(2, length(inp$obsC)) 
+    inp$stdevfacC[1:18] <- 2 #Extra uncertainty in the whole time series of landings
+    
+    # only index from 2006 (more reliable)
+    Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
+    
+    # Remove 2008 from SVP time series as seems unreliable
+    Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year != 2008)
+    
+    inp$timeI <- list()
+    inp$timeI[[1]] <- Obs_I_gam1_Above8m$Year+0.5
+    
+    inp$obsI <- list()
+    inp$obsI[[1]] <- Obs_I_gam1_Above8m$mu.std
+    
+    #fix the surplus production curve to be symmetrical - optional
+    inp$ini$logn <- log(2)
+    inp$phases$logn <- -1
     
     ### a prior for the initial biomass depletion - can help if guessable 
     inp$priors$logbkfrac <- c(log(0.8), 0.5, 1) #Low or no exploitation before beginning of available data
@@ -162,12 +234,19 @@ fit.SPICT.Scenarios<-function(Scenarios) {
   }
   if(Scenarios=="F.6"){
     scenario<-"F.6"
-    #Adding offshore index at start of time series
+    # Description: Same as F.5 but including the standarized index from 1990-2006 from the offshore fishery
+    
+    #Landings: 
+    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:40] 
+    inp$timeC <- CRE_NW_Landings$Year[23:40] 
+    
+    inp$stdevfacC <- rep(2, length(inp$obsC)) 
+    inp$stdevfacC[1:18] <- 2 #Extra uncertainty in the whole time series of landings
     
     # only index from 2006 (more reliable)
     Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
     
-    # Remove 2008 from time series as seems unreliable
+    # Remove 2008 from SVP time series as seems unreliable
     Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year != 2008)
     
     inp$timeI <- list()
@@ -178,90 +257,25 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     inp$obsI[[1]] <- Obs_I_gam1_Above8m$mu.std
     inp$obsI[[2]] <- I4_index$mu.std
     
-    ### a prior for the initial biomass depletion - can help if guessable 
-    inp$priors$logbkfrac <- c(log(0.8), 0.5, 1) #Low or no exploitation before beginning of available data
-    
     #fix the surplus production curve to be symmetrical - optional
     inp$ini$logn <- log(2)
     inp$phases$logn <- -1
+    
+    ### a prior for the initial biomass depletion - can help if guessable 
+    inp$priors$logbkfrac <- c(log(0.8), 0.5, 1) #Low or no exploitation before beginning of available data
+    
   }
   if(Scenarios=="F.7"){
     scenario<-"F.7"
-    #Adding offshore index at start of time series
+    # Description: Same as F.6 but including the standarized index from 1990-2006 from the offshore fishery
+    # only from 2002 onwards
     
-    # only index from 2006 (more reliable)
-    Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
+    #Landings: 
+    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:40] 
+    inp$timeC <- CRE_NW_Landings$Year[23:40] 
     
-    # Remove 2008 from time series as seems unreliable
-    Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year != 2008)
-    
-    inp$timeI <- list()
-    inp$timeI[[1]] <- Obs_I_gam1_Above8m$Year+0.5
-    inp$timeI[[2]] <- I4_index$Year+0.5
-    
-    inp$obsI <- list()
-    inp$obsI[[1]] <- Obs_I_gam1_Above8m$mu.std
-    inp$obsI[[2]] <- I4_index$mu.std
-    
-    ### a prior for the initial biomass depletion - can help if guessable 
-    inp$priors$logbkfrac <- c(log(0.5), 0.5, 1) #Low or no exploitation before beginning of available data
-    
-    #fix the surplus production curve to be symmetrical - optional
-    inp$ini$logn <- log(2)
-    inp$phases$logn <- -1
-  }
-  if(Scenarios=="F.8"){
-    scenario<-"F.8"
-    #Adding offshore index at start of time series
-    
-    # only index from 2006 (more reliable)
-    Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
-    
-    # Remove 2008 from time series as seems unreliable
-    Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year != 2008)
-    
-    inp$timeI <- list()
-    inp$timeI[[1]] <- Obs_I_gam1_Above8m$Year+0.5
-    inp$timeI[[2]] <- I4_index$Year+0.5
-    
-    inp$obsI <- list()
-    inp$obsI[[1]] <- Obs_I_gam1_Above8m$mu.std
-    inp$obsI[[2]] <- I4_index$mu.std
-    
-    ### a prior for the initial biomass depletion - can help if guessable 
-    inp$priors$logbkfrac <- c(log(0.9), 0.25, 1) #Low or no exploitation before beginning of available data
-    
-    #fix the surplus production curve to be symmetrical - optional
-    inp$ini$logn <- log(2)
-    inp$phases$logn <- -1
-  }
-  if(Scenarios=="F.9"){
-    scenario<-"F.9"
-    
-    # only index from 2006 (more reliable)
-    Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
-    
-    # Remove 2008 from SVP time series as seems unreliable
-    Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year != 2008)
-
-    inp$stdevfacC <- rep(1, length(inp$obsC)) 
-    inp$stdevfacC[1:15] <- 5 #Extra uncertainty in the first 15 years of landings
-    
-    inp$timeI <- list()
-    inp$timeI[[1]] <- Obs_I_gam1_Above8m$Year+0.5
-    
-    inp$obsI <- list()
-    inp$obsI[[1]] <- Obs_I_gam1_Above8m$mu.std
-    
-    ### a prior for the initial biomass depletion - can help if guessable 
-    inp$priors$logbkfrac <- c(log(0.8), 0.5, 1) #Low or no exploitation before beginning of available data
-    
-    #fix the surplus production curve to be symmetrical - optional
-    inp$ini$logn <- log(2)
-    inp$phases$logn <- -1
-  }
-  if(Scenarios=="F.10"){
-    scenario<-"F.10"
+    inp$stdevfacC <- rep(2, length(inp$obsC)) 
+    inp$stdevfacC[1:18] <- 2 #Extra uncertainty in the whole time series of landings
     
     # only index from 2006 (more reliable)
     Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
@@ -269,8 +283,36 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     # Remove 2008 from SVP time series as seems unreliable
     Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year != 2008)
     
-    inp$stdevfacC <- rep(1, length(inp$obsC)) 
-    inp$stdevfacC[1:15] <- 5 #Extra uncertainty in the first 15 years of landings
+    inp$timeI <- list()
+    inp$timeI[[1]] <- Obs_I_gam1_Above8m$Year+0.5
+    inp$timeI[[2]] <- I4_index$Year[12:16]+0.5
+    
+    inp$obsI <- list()
+    inp$obsI[[1]] <- Obs_I_gam1_Above8m$mu.std
+    inp$obsI[[2]] <- I4_index$mu.std[12:16]
+    
+    #fix the surplus production curve to be symmetrical - optional
+    inp$ini$logn <- log(2)
+    inp$phases$logn <- -1
+    
+    ### a prior for the initial biomass depletion - can help if guessable 
+    inp$priors$logbkfrac <- c(log(0.8), 0.5, 1) #Low or no exploitation before beginning of available data
+    
+  }
+  if(Scenarios=="R.8"){
+    scenario<-"R.8"
+    # Description: using the reconstructed landings in NI from 1990 and both the SVP and
+    # offshore vivier index. Remaining parameters as F.1
+    
+    #Landings: 
+    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:40] 
+    inp$timeC <- CRE_NW_LandingsR$Year[11:40] 
+    
+    # only index from 2006 (more reliable)
+    Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
+    
+    # Remove 2008 from SVP time series as seems unreliable
+    Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year != 2008)
     
     inp$timeI <- list()
     inp$timeI[[1]] <- Obs_I_gam1_Above8m$Year+0.5
@@ -280,15 +322,84 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     inp$obsI[[1]] <- Obs_I_gam1_Above8m$mu.std
     inp$obsI[[2]] <- I4_index$mu.std
     
-    ### a prior for the initial biomass depletion - can help if guessable 
-    inp$priors$logbkfrac <- c(log(0.8), 0.5, 1) #Low or no exploitation before beginning of available data
+    #Forecast and management
+    inp$maninterval <- c(2020, 2021)
+    inp$maneval <- 2021
+    
+  }
+  if(Scenarios=="R.9"){
+    scenario<-"R.9"
+    # Description: Same as R.8 with extra uncertainty in the landings
+    
+    #Landings: 
+    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:40] 
+    inp$timeC <- CRE_NW_LandingsR$Year[11:40] 
+    
+    
+    inp$stdevfacC <- rep(1, length(inp$obsC)) #Extra uncertainty in the whole time series of landings
+    inp$stdevfacC[1:13] <- 2 #Extra uncertainty from 1990-2002
+    
+    # only index from 2006 (more reliable)
+    Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
+    
+    # Remove 2008 from SVP time series as seems unreliable
+    Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year != 2008)
+    
+    inp$timeI <- list()
+    inp$timeI[[1]] <- Obs_I_gam1_Above8m$Year+0.5
+    inp$timeI[[2]] <- I4_index$Year+0.5
+    
+    inp$obsI <- list()
+    inp$obsI[[1]] <- Obs_I_gam1_Above8m$mu.std
+    inp$obsI[[2]] <- I4_index$mu.std
+    
+    #Forecast and management
+    inp$maninterval <- c(2020, 2021)
+    inp$maneval <- 2021
+    
+    
+  }
+  if(Scenarios=="R.10"){
+    scenario<-"R.10"
+    # Description: Same as R.9 with extra uncertainty in the landings, but fixing production curve
+    # and prior for depletion level. 
+    
+    #Landings: 
+    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:40] 
+    inp$timeC <- CRE_NW_LandingsR$Year[11:40] 
+    
+    
+    inp$stdevfacC <- rep(1, length(inp$obsC)) #Extra uncertainty in the whole time series of landings
+    inp$stdevfacC[1:13] <- 2 #Extra uncertainty from 1990-2002
+    
+    # only index from 2006 (more reliable)
+    Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
+    
+    # Remove 2008 from SVP time series as seems unreliable
+    Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year != 2008)
+    
+    inp$timeI <- list()
+    inp$timeI[[1]] <- Obs_I_gam1_Above8m$Year+0.5
+    inp$timeI[[2]] <- I4_index$Year+0.5
+    
+    inp$obsI <- list()
+    inp$obsI[[1]] <- Obs_I_gam1_Above8m$mu.std
+    inp$obsI[[2]] <- I4_index$mu.std
     
     #fix the surplus production curve to be symmetrical - optional
     inp$ini$logn <- log(2)
     inp$phases$logn <- -1
-  }
-  
+    
+    ### a prior for the initial biomass depletion - can help if guessable 
+    inp$priors$logbkfrac <- c(log(0.9), 0.5, 1) #Low or no exploitation before beginning of available data
+    
 
+    #Forecast and management
+    inp$maninterval <- c(2020, 2021)
+    inp$maneval <- 2021
+    
+    
+  }
   
   # Prior for the intrinsic growth rate?
   
@@ -299,7 +410,9 @@ fit.SPICT.Scenarios<-function(Scenarios) {
 }
 
 
-Scenarios<-c(paste0("F.",seq(1,10,by=1)))#paste0("F.",seq(1,9,by=1))
+Scenarios.F<-c(paste0("F.",seq(1,7,by=1)))#paste0("F.",seq(1,9,by=1))
+Scenario.R<-c(paste0("R.",seq(8,10,by=1)))
+Scenarios<-c(Scenarios.F,Scenario.R)
 n.sce<-length(Scenarios)
 
 res.pos <- vector("list", n.sce) 
@@ -315,43 +428,62 @@ for (s in 1:n.sce) {
 # Model diagnosis: 
 
 # Convergence
-res.pos[[9]][[3]]
+res.pos[[10]][[3]]
 
 
 #Normality/ Autocorrelation
-plotspict.diagnostic(calc.osa.resid(res.pos[[8]][[3]]))
+plotspict.diagnostic(calc.osa.resid(res.pos[[10]][[3]]))
 
 #Retrospective 
-fit<-retro(res.pos[[10]][[3]])
+fit<-retro(res.pos[[8]][[3]])
 plotspict.retro(fit)
 mohns_rho(fit, what = c("FFmsy", "BBmsy"))
 
 #Variance parameters finite
-all(is.finite(res.pos[[10]]$sd))
+all(is.finite(res.pos[[5]]$sd))
 
 #Realistic production curve
 calc.bmsyk(res.pos[[5]][[3]])
 
 # Magnitude difference
-calc.om(res.pos[[10]][[3]])
+calc.om(res.pos[[1]][[3]])
 
 #Sensitivity
 set.seed(123)
-fit <- check.ini(res.pos[[10]][[3]],ntrials = 30)
+fit <- check.ini(res.pos[[8]][[3]],ntrials = 30)
 fit$check.ini$resmat
 
 
 # Results
-plotspict.data(res.pos[[6]][[2]])
+plotspict.data(res.pos[[7]][[2]])
 plot(res.pos[[10]][[3]])
-res.pos[[9]][[3]]
+res.pos[[8]][[3]]
+plotspict.production(res.pos[[1]][[3]])
 plot_production(res.pos[[1]][[3]], plot_it = T)  
 
 
+plot(test$pred$P~test$pred$B)
+# Paul Bouch plots --------------------------------------------------------
+colp <- colorRampPalette(rev(c("#67001F", "#B2182B", "#D6604D", 
+                               "#F4A582", "#FDDBC7", "#FFFFFF", "#D1E5F0", "#92C5DE", 
+                               "#4393C3", "#2166AC", "#053061"))) ## intiutively think cold is negative and blue
 
-corrplot(cov2cor(res.pos[[5]][[3]]$cov.fixed), 
-         method = "ellipse", type = "upper", col = colp(200), 
-         addCoef.col = "black", diag = FALSE)
+# Plot production curves from different scenarios one against each other: 
+par(mfrow = c(round(n.sce/2), round(n.sce/2)))
+for (i in 1:n.sce) {
+  plot_production(res.pos[[i]][[3]], plot_it = T)
+  
+}
+par(mfrow = c(1, 1))
+
+corrplot(cov2cor(res.pos[[10]][[3]]$cov.fixed), method = "ellipse", 
+         type = "upper", col = colp(200), addCoef.col = "black", diag = FALSE)
+
+res.pos[[1]][[3]]$diag.cov.random
+
+get.cov(res.pos[[1]][[3]], q, n)
+
+
 
 
 
@@ -448,13 +580,52 @@ Bbmsy.df$Scenario <- Scenarios
 Bbmsy.df$Ref.Point<-"Bbmsy"
 Bbmsy.df$Model<-NA
 
-# Bind reference points together
-out<-rbind(Bmsy,Fmsy,MSY,
-           Bbmsy.df, Ffmsy.df)
-out$Scenario<-factor(out$Scenario,levels = paste0("F.",seq(1,10,by=1)))
+#Intrinsic growth rate
+r<-array(NA,dim=c(n.sce,3))
 
-ggplot(subset(out,Scenario %in% c("F.1","F.3","F.4","F.5","F.6","F.7","F.8",
-                                  "F.9","F.10")),
+for (s in 1:n.sce) {
+  v<-sumspict.parest(res.pos[[s]][[3]])
+  v[rownames(v) == c("r  "),]                   
+  r[s,]<- as.numeric(v[rownames(v) == c("r  "),1:3])
+}
+
+r.df <- data.frame(r)
+colnames(r.df) <- c("estimate","cilow","ciupp")
+r.df$Scenario <- Scenarios
+r.df$Ref.Point<-"Intrinsic Growth Rate"
+r.df$Model<-NA
+
+# logsdb    logsdf
+logsdb<-array(NA,dim=c(n.sce,1))
+logsdf<-array(NA,dim=c(n.sce,1))
+
+for (s in 1:n.sce) {
+  logsdb[s,]<- as.numeric(res.pos[[s]][[3]]$par.fixed["logsdb"])
+  logsdf[s,]<- as.numeric(res.pos[[s]][[3]]$par.fixed["logsdf"])
+}
+logsdb.df <- data.frame(logsdb)
+colnames(logsdb.df) <- c("estimate")
+logsdb.df$cilow<-NA
+logsdb.df$ciupp<-NA
+logsdb.df$Scenario <- Scenarios
+logsdb.df$Ref.Point<-"logsdb"
+logsdb.df$Model<-NA
+
+logsdf.df <- data.frame(logsdf)
+colnames(logsdf.df) <- c("estimate")
+logsdf.df$cilow<-NA
+logsdf.df$ciupp<-NA
+logsdf.df$Scenario <- Scenarios
+logsdf.df$Ref.Point<-"logsdf"
+logsdf.df$Model<-NA
+
+# Bind outputs together
+out<-rbind(Bmsy,Fmsy,MSY,
+           Bbmsy.df, Ffmsy.df,r.df,logsdb.df,logsdf.df)
+#out$Scenario<-factor(out$Scenario,levels = c(paste0("F.",seq(1,11,by=1)),"R.8"))
+
+x11()
+ggplot(out,
        aes(x =  as.factor(Scenario),
            y = estimate,
            group = Model,
@@ -482,3 +653,45 @@ ggplot(subset(out,Scenario %in% c("F.1","F.3","F.4","F.5","F.6","F.7","F.8",
         axis.text.y = element_text(size=rel(1.4)))
 
 
+# Plot production curves on top of each other: 
+for (s in 1:n.sce) {
+  test<-extractspict.production(res.pos[[s]][[3]],res.pos[[s]][[1]])
+  
+  if(s==1) {test.f<-test}
+  else {test.f<-rbind(test.f,test)}
+}
+
+ggplot(subset(test.f,Scenario %in% c(paste0("F.",seq(1,5,by=1)),
+                                     paste0("R.",seq(8,10,by=1)))),
+       aes(x=Bplot/Kest,y=Pst/Pstscal,colour=Scenario))+
+  geom_line(size=1.2)+
+  labs(y=paste0(unique(test.f$ylab)))+
+  geom_hline(yintercept = 0,linetype=2)+
+  geom_vline(xintercept = .5,linetype=2)+
+  ggsci::scale_colour_lancet()
+
+
+# Below from Paul Bauch: 
+#for (s in 1:n.sce) {
+#  test<-plot_production(res.pos[[s]][[3]],plot_it = F)$pred
+#  test$Scenario<-Scenarios[s]
+#  
+#  if(s==1) {test.f<-test}
+#  else {test.f<-rbind(test.f,test)}
+#}
+
+#ggplot(test.f,aes(x=B,y=P,colour=Scenario))+
+#  geom_line(size=1.2)+
+#  scale_y_continuous(limits = c(0,max(test.f$P)))+
+#  labs(y="Surplus Production",x="Biomass")+
+#  ggsci::scale_colour_lancet()
+
+#TAC
+
+# Hockey-stick MSY rule with the 35th percentile
+get.TAC(res.pos[[9]][[3]],
+        fractiles = list(catch=0.35, bbmsy=0.35, ffmsy=0.35), breakpointB=0.5)
+rep<-manage(res.pos[[9]][[3]])
+plot2(rep)
+plotspict.bbmsy(rep)
+sumspict.manage(rep)
