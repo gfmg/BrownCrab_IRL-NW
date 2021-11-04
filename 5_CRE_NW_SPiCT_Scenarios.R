@@ -14,8 +14,7 @@ library(ggpubr)
 library(corrplot)
 
 
-dataDir<-file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/Stock_Assessment",
-                   "/CRE/NorthWest_SPiCT/Data/SPiCT")
+dataDir<-file.path("")
 
 # Load data
 load(file.path(dataDir,"CRE_NW_ObsC.RData")) #NW CRE landings
@@ -29,13 +28,11 @@ load(file.path(dataDir,"CRE_NW_ObsI_gam1_quarter_Target.RData")) #NW_CRE_Quarter
 load(file.path(dataDir,"CRE_NW_I4_Offshore_ar1_index.RData")) #NW_Crab_index from offshore vessels. Model I3
 
 #Additional plots from Paul Boch to check uncertainty
-source(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
-                 "Stock_Assessment/CRE/NorthWest_SPiCT/SPiCT",
+source(file.path("",
                  "production_uncertainty_pb.R"))
 
 #Additional function to compare production curves:
-source(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
-                 "Stock_Assessment/CRE/NorthWest_SPiCT/SPiCT",
+source(file.path("",
                  "extractspict.production.R"))
 
 # Data prep ---------------------------------------------------------------

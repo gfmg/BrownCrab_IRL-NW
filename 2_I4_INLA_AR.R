@@ -22,14 +22,14 @@ rm(list=ls())
 
 # Setting Directory and Loading data --------------------------------------
 
-setwd(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/Inshore_Data_compilations/Brown Crab/Modelling"))
+setwd(file.path(""))
 
 
-scriptDir<-file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/Inshore_Data_compilations/Brown Crab/Modelling")
+scriptDir<-file.path("")
 
-OutDir<-file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/Inshore_Data_compilations/Brown Crab/Outputs")
+OutDir<-file.path("")
 
-DataDir<-file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/Inshore_Data_compilations/Brown Crab/Data")
+DataDir<-file.path("")
 
 
 ## Libraries

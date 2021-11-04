@@ -12,8 +12,7 @@ library(mgcv)
 library(ggsci)
 
 # Load data
-dataDir<-file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
-                   "Stock_Assessment/CRE/NorthWest_SPiCT/Data")
+dataDir<-file.path("")
 
 
 load(file.path(dataDir,
