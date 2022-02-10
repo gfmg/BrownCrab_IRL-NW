@@ -14,7 +14,8 @@ library(ggpubr)
 library(corrplot)
 
 
-dataDir<-file.path("")
+dataDir<-file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/Stock_Assessment",
+                   "/CRE/NorthWest_SPiCT/Data/SPiCT")
 
 # Load data
 load(file.path(dataDir,"CRE_NW_ObsC.RData")) #NW CRE landings
@@ -28,13 +29,19 @@ load(file.path(dataDir,"CRE_NW_ObsI_gam1_quarter_Target.RData")) #NW_CRE_Quarter
 load(file.path(dataDir,"CRE_NW_I4_Offshore_ar1_index.RData")) #NW_Crab_index from offshore vessels. Model I3
 
 #Additional plots from Paul Boch to check uncertainty
-source(file.path("",
+source(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
+                 "Stock_Assessment/CRE/NorthWest_SPiCT/SPiCT",
                  "production_uncertainty_pb.R"))
 
 #Additional function to compare production curves:
-source(file.path("",
+source(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
+                 "Stock_Assessment/CRE/NorthWest_SPiCT/SPiCT",
                  "extractspict.production.R"))
 
+# Function to plot landings overlaid with the index observations
+source(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/Stock_Assessment/CRE/",
+                 "NorthWest_SPiCT/SPiCT",
+                 "plot_LandingsIndex.R"))
 # Data prep ---------------------------------------------------------------
 
 # Sum all landings by countries
@@ -550,10 +557,10 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     
     # Prior for the intrinsic growth rate
     inp$priors$logr <- c(log(0.3), 0.5)
+    
+    #Management interval from 2021-2022
+    inp$maninterval<-c(2021,2022)
   }
-  
-  
-  
   
   res <- fit.spict(inp)
   
@@ -573,7 +580,7 @@ res.pos <- vector("list", n.sce)
 for (s in 1:n.sce) {
   res.pos[[s]] <- fit.SPICT.Scenarios(Scenarios = Scenarios[s])
 }
-#save(res.pos,file=file.path("./SPiCT.fit.RData"))
+#save(res.pos,file=file.path("./SPiCT_Scenarios.RData"))
 
 
 # SPiCT diagnoses and Outputs ---------------------------------------------
@@ -582,14 +589,14 @@ for (s in 1:n.sce) {
 # Model diagnosis: 
 
 # Convergence
-res.pos[[1]][[3]]
+res.pos[[15]][[3]]
 
 
 #Normality/ Autocorrelation
-plotspict.diagnostic(calc.osa.resid(res.pos[[3]][[3]]))
+plotspict.diagnostic(calc.osa.resid(res.pos[[16]][[3]]))
 
 #Retrospective 
-fit<-retro(res.pos[[15]][[3]])
+fit<-retro(res.pos[[16]][[3]])
 plotspict.retro(fit)
 mohns_rho(fit, what = c("FFmsy", "BBmsy"))
 
@@ -613,10 +620,10 @@ get.AIC(res.pos[[3]][[3]])
 
 # Results
 plotspict.data(res.pos[[7]][[2]])
-plot(res.pos[[13]][[3]])
-res.pos[[6]][[3]]
+plot(res.pos[[15]][[3]])
+res.pos[[2]][[3]]
 plotspict.production(res.pos[[13]][[3]])
-plot_production(res.pos[[1]][[3]], plot_it = T)  
+plot_production(res.pos[[15]][[3]], plot_it = T)  
 
 
 # Paul Bouch plots --------------------------------------------------------
@@ -836,7 +843,8 @@ ggplot(subset(out,Scenario %in% c("F.4","F.6","R.12","R.13","G.1","G.2") &
                                     margin = margin(t = 25, r = 0, b = 0, l = 0)),
         axis.title.y = element_text(size=rel(1.4),
                                     margin = margin(t = 0, r = 25, b = 0, l = 0)),
-        axis.text.y = element_text(size=rel(1.4)))
+        axis.text.y = element_text(size=rel(1.4)),
+        strip.text = element_text(size=14))
 
 
 # Plot production curves on top of each other: 
@@ -931,20 +939,75 @@ ggplot(df.f,aes(x=time,y=est,colour=Scenario,grooup=Scenario))+
 #  ggsci::scale_colour_lancet()
 
 #TAC
-
 # Hockey-stick MSY rule with the 35th percentile
-get.TAC(res.pos[[1]][[3]],
+get.TAC(res.pos[[15]][[3]],
         fractiles = list(catch=0.35, bbmsy=0.35, ffmsy=0.35), breakpointB=0.5)
-rep<-manage(res.pos[[1]][[3]])
+rep<-manage(res.pos[[15]][[3]])
 plot2(rep)
 plotspict.bbmsy(rep)
 sumspict.manage(rep)
 plotspict.fb(rep,rel.axes = TRUE)
 
+# What were landings in 2020? 
+#IRL: 2001.5607
+#SCO: 1564.028
+#NI: 703.7378
+#Tot:  4269.327
 
-repIntPerC <- manage(res.pos[[1]][[3]], maninterval = c(2021,2022), 
-                     intermediatePeriodCatch = 4031)
+repIntPer <- manage(res.pos[[15]][[3]], 
+                     maninterval = c(2021,2022), 
+                     #maneval=2021.5,
+                     intermediatePeriodCatch = 4270) 
+
+repIntPerC <- add.man.scenario(repIntPer, scenarioTitle = "ices",
+                              breakpointB = 0.5,
+                              fractiles = list(catch=0.35, bbmsy=0.35, ffmsy=0.35),
+                              intermediatePeriodCatch = 4270,
+                              maninterval = c(2021,2022))
+
+
+man.timeline(repIntPerC)
 plot2(repIntPerC)
 plotspict.fb(repIntPerC,rel.axes = TRUE,man.legend = FALSE)
 plotspict.bbmsy(repIntPerC,ylim =c(0,3))
 sumspict.manage(repIntPerC)
+
+get.TAC(res.pos[[15]][[3]],breakpointB = 0.5,
+        fractiles = list(catch=0.35), #bbmsy=0.35, ffmsy=0.35
+        intermediatePeriodCatch = 4270,
+        maninterval = c(2021,2022))
+
+
+# Applying harvest control rules (2/3 rule)
+
+r_NW<-mean(Obs_I_gam1_Above8m$mu.std[Obs_I_gam1_Above8m$Year %in% c(2018,2019)])/mean(Obs_I_gam1_Above8m$mu.std[Obs_I_gam1_Above8m$Year %in% c(2015,2016,2017)])
+#0.5668599
+
+#Cy=Cy-1*r
+CRE_NW_Landings$Landings_ton_CRE[CRE_NW_Landings$Year %in% 2019]*r_NW
+4270*r_NW #4270 are catches in 2020
+
+b<-Obs_I_gam1_Above8m$mu.std[Obs_I_gam1_Above8m$Year %in% 2019]/1.4*(Obs_I_gam1_Above8m$mu.std[Obs_I_gam1_Above8m$Year %in% 2019])
+#0.18
+
+#f<- 
+#m<-0.95
+
+SVP_nom_index<-read.csv(file = file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
+                                         "Stock_Assessment/CRE/NorthWest_SPiCT/Data/SVP",
+                                         "SVP_nominal_index_AllStocks.csv"))
+# For the SW Irish Stock (non-standardized index)
+SW_index<-subset(SVP_nom_index,Stock %in% "SW Ireland" &
+                   Target %in% "Target")
+
+r_SW<-mean(SW_index$Value[SW_index$Year %in% c(2018,2019)])/mean(SW_index$Value[SW_index$Year %in% c(2015,2016,2017)])
+#0.5593662
+
+#For the Celtic Sea Stock (non-standardized index)
+CS_index<-subset(SVP_nom_index,Stock %in% "Celtic Sea" &
+                   Target %in% "Target")
+
+r_CS<-mean(CS_index$Value[CS_index$Year %in% c(2018,2019)])/mean(CS_index$Value[CS_index$Year %in% c(2015,2016,2017)])
+#0.7753303
+
+
