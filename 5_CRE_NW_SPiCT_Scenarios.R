@@ -14,8 +14,7 @@ library(ggpubr)
 library(corrplot)
 
 
-dataDir<-file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/Stock_Assessment",
-                   "/CRE/NorthWest_SPiCT/Data/SPiCT")
+dataDir<-file.path("")
 
 # Load data
 load(file.path(dataDir,"CRE_NW_ObsC.RData")) #NW CRE landings
@@ -29,18 +28,15 @@ load(file.path(dataDir,"CRE_NW_ObsI_gam1_quarter_Target.RData")) #NW_CRE_Quarter
 load(file.path(dataDir,"CRE_NW_I4_Offshore_ar1_index.RData")) #NW_Crab_index from offshore vessels. Model I3
 
 #Additional plots from Paul Boch to check uncertainty
-source(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
-                 "Stock_Assessment/CRE/NorthWest_SPiCT/SPiCT",
+source(file.path("",
                  "production_uncertainty_pb.R"))
 
 #Additional function to compare production curves:
-source(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
-                 "Stock_Assessment/CRE/NorthWest_SPiCT/SPiCT",
+source(file.path("",
                  "extractspict.production.R"))
 
 # Function to plot landings overlaid with the index observations
-source(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/Stock_Assessment/CRE/",
-                 "NorthWest_SPiCT/SPiCT",
+source(file.path("",
                  "plot_LandingsIndex.R"))
 # Data prep ---------------------------------------------------------------
 
@@ -948,12 +944,6 @@ plotspict.bbmsy(rep)
 sumspict.manage(rep)
 plotspict.fb(rep,rel.axes = TRUE)
 
-# What were landings in 2020? 
-#IRL: 2001.5607
-#SCO: 1564.028
-#NI: 703.7378
-#Tot:  4269.327
-
 repIntPer <- manage(res.pos[[15]][[3]], 
                      maninterval = c(2021,2022), 
                      #maneval=2021.5,
@@ -993,8 +983,7 @@ b<-Obs_I_gam1_Above8m$mu.std[Obs_I_gam1_Above8m$Year %in% 2019]/1.4*(Obs_I_gam1_
 #f<- 
 #m<-0.95
 
-SVP_nom_index<-read.csv(file = file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
-                                         "Stock_Assessment/CRE/NorthWest_SPiCT/Data/SVP",
+SVP_nom_index<-read.csv(file = file.path("",
                                          "SVP_nominal_index_AllStocks.csv"))
 # For the SW Irish Stock (non-standardized index)
 SW_index<-subset(SVP_nom_index,Stock %in% "SW Ireland" &
