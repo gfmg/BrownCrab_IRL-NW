@@ -14,9 +14,7 @@ library(glmmTMB)
 library(ggsci)
 
 # Load data
-dataDir<-file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
-                   "Stock_Assessment/CRE/NorthWest_SPiCT/Code/2_SVP_DataPrep/",
-                   "2022_SVP_Clean")
+dataDir<-file.path("")
 
 
 load(file.path(dataDir,

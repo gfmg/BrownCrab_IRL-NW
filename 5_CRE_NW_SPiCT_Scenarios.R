@@ -14,8 +14,7 @@ library(ggpubr)
 library(corrplot)
 
 
-dataDir<-file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
-                   "Stock_Assessment/CRE/NorthWest_SPiCT/Code")
+dataDir<-file.path("")
 
 # Load data
 load(file.path(dataDir,"1_Landings_DataPrep/2022_Assessment_Landings",
@@ -34,18 +33,15 @@ load(file.path(dataDir,"3_GAM_Standarization/2022_Assessment_Index",
 load(file.path(dataDir,"3_GAM_Standarization","CRE_NW_I4_Offshore_ar1_index.RData")) #NW_Crab_index from offshore vessels. Model I3
 
 #Additional plots from Paul Boch to check uncertainty
-source(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
-                 "Stock_Assessment/CRE/NorthWest_SPiCT/Code/4_SPiCT",
+source(file.path("",
                  "production_uncertainty_pb.R"))
 
 #Additional function to compare production curves:
-source(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
-                 "Stock_Assessment/CRE/NorthWest_SPiCT/Code/4_SPiCT",
+source(file.path("",
                  "extractspict.production.R"))
 
 # Function to plot landings overlaid with the index observations
-source(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
-                 "Stock_Assessment/CRE/NorthWest_SPiCT/Code/4_SPiCT",
+source(file.path("",
                  "plot_LandingsIndex.R"))
 # Data prep ---------------------------------------------------------------
 
@@ -1010,8 +1006,7 @@ b<-Obs_I_gam1_Above8m$mu.std[Obs_I_gam1_Above8m$Year %in% 2019]/1.4*(Obs_I_gam1_
 #f<- 
 #m<-0.95
 
-SVP_nom_index<-read.csv(file = file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
-                                         "Stock_Assessment/CRE/NorthWest_SPiCT/Data/SVP",
+SVP_nom_index<-read.csv(file = file.path("",
                                          "SVP_nominal_index_AllStocks.csv"))
 SVP_nom_index<-subset(SVP_nom_index,CatchType %in% "LPUE")
 
