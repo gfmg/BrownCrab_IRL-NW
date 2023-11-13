@@ -14,40 +14,52 @@ library(ggpubr)
 library(corrplot)
 
 
-dataDir<-file.path("")
+dataDir<-file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
+                   "Stock_Assessment/CRE/NorthWest_SPiCT/Code")
 
 # Load data
-load(file.path(dataDir,"CRE_NW_ObsC.RData")) #NW CRE landings
-load(file.path(dataDir,"CRE_NW_ObsC_Reconstructed.RData")) #Reconstructed NW CRE landings based on lm
+load(file.path(dataDir,"1_Landings_DataPrep/2022_Assessment_Landings",
+               "CRE_NW_ObsC_new.RData")) #NW CRE landings
+
+#Reconstructed NW CRE landings based on lm. Applied to NI from 1990-2001
+load(file.path(dataDir,"1_Landings_DataPrep/2022_Assessment_Landings",
+               "CRE_NW_ObsC_Reconstructed.RData")) 
 
 #load(file.path(dataDir,"CRE_NW_ObsI_gam1_Allvessels.RData")) # NW CRE index from gam_1
-load(file.path(dataDir,"CRE_NW_ObsI_gam1_Target.RData")) # NW CRE index from gam_1
-load(file.path(dataDir,"CRE_NW_ObsI_gam1_quarter_Target.RData")) #NW_CRE_Quarterly based
+load(file.path(dataDir,"3_GAM_Standarization/2022_Assessment_Index",
+               "CRE_NW_ObsI_gam1_Above8m_21.RData")) # NW CRE index from gam_1
+#load(file.path(dataDir,"CRE_NW_ObsI_gam1_quarter_Target.RData")) #NW_CRE_Quarterly based
 
 #Load INLA seasonal index:
-load(file.path(dataDir,"CRE_NW_I4_Offshore_ar1_index.RData")) #NW_Crab_index from offshore vessels. Model I3
+load(file.path(dataDir,"3_GAM_Standarization","CRE_NW_I4_Offshore_ar1_index.RData")) #NW_Crab_index from offshore vessels. Model I3
 
 #Additional plots from Paul Boch to check uncertainty
-source(file.path("",
+source(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
+                 "Stock_Assessment/CRE/NorthWest_SPiCT/Code/4_SPiCT",
                  "production_uncertainty_pb.R"))
 
 #Additional function to compare production curves:
-source(file.path("",
+source(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
+                 "Stock_Assessment/CRE/NorthWest_SPiCT/Code/4_SPiCT",
                  "extractspict.production.R"))
 
 # Function to plot landings overlaid with the index observations
-source(file.path("",
+source(file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
+                 "Stock_Assessment/CRE/NorthWest_SPiCT/Code/4_SPiCT",
                  "plot_LandingsIndex.R"))
 # Data prep ---------------------------------------------------------------
 
 # Sum all landings by countries
-NW_Landings<-subset(NW_Landings,!Year %in% 2020) #Remove 2020 data
+#NW_Landings<-subset(NW_Landings,!Year %in% 2021) #Remove 2021 data
 CRE_NW_Landings<-aggregate(Landings_ton_CRE~Year,data = NW_Landings,FUN = sum)
 
 # Sum all landings by countries in reconstructed dataset
-NW_LandingsL<-subset(NW_LandingsL,!Year %in% 2020) #Remove 2020 data
+#NW_LandingsL<-subset(NW_LandingsL,!Year %in% 2020) #Remove 2020 data
 CRE_NW_LandingsR<-aggregate(Landings_ton_CRE~Year,data = NW_LandingsL,FUN = sum)
 
+#Add 2020 and 2021 to the reconstructed dataset
+CRE_NW_LandingsR<-rbind(CRE_NW_LandingsR,
+                        CRE_NW_Landings[CRE_NW_Landings$Year %in% c(2020,2021),])
 
 # Catch series Year to numeric
 CRE_NW_Landings$Year<-as.integer(as.character(CRE_NW_Landings$Year))
@@ -55,38 +67,41 @@ CRE_NW_LandingsR$Year<-as.integer(as.character(CRE_NW_LandingsR$Year))
 
 
 # Scale indices of LPUE
-Obs_I1$mu.std<-Obs_I1$mu.r/mean(Obs_I1$mu.r)
-Obs_I1$ci.low.std<-Obs_I1$ci.low.r/mean(Obs_I1$mu.r)
-Obs_I1$ci.up.std<-Obs_I1$ci.up.r/mean(Obs_I1$mu.r)
+Obs_I2$mu.std<-Obs_I2$mu.r/mean(Obs_I2$mu.r)
+Obs_I2$ci.low.std<-Obs_I2$ci.low.r/mean(Obs_I2$mu.r)
+Obs_I2$ci.up.std<-Obs_I2$ci.up.r/mean(Obs_I2$mu.r)
 
 #Rename index
-Obs_I_gam1_Above8m<-Obs_I1
+Obs_I_gam1_Above8m<-Obs_I2
 
 #Year as numeric, reorder data.frame
 Obs_I_gam1_Above8m$Year<-as.integer(as.character(Obs_I_gam1_Above8m$fYear))
 Obs_I_gam1_Above8m<-Obs_I_gam1_Above8m[order(Obs_I_gam1_Above8m$Year),]
 
 # Quarterly index. 
-Obs_I1_Q$YQ.dec<-ifelse(Obs_I1_Q$fQuarter==1,0,
-                    ifelse(Obs_I1_Q$fQuarter==2,0.25,
-                           ifelse(Obs_I1_Q$fQuarter==3,0.50,
-                                  ifelse(Obs_I1_Q$fQuarter==4,0.75,NA))))
+#Obs_I1_Q$YQ.dec<-ifelse(Obs_I1_Q$fQuarter==1,0,
+#                    ifelse(Obs_I1_Q$fQuarter==2,0.25,
+#                           ifelse(Obs_I1_Q$fQuarter==3,0.50,
+#                                  ifelse(Obs_I1_Q$fQuarter==4,0.75,NA))))
 
-Obs_I1_Q$YQ<-as.integer(as.character(Obs_I1_Q$fYear))+Obs_I1_Q$YQ.dec
+#Obs_I1_Q$YQ<-as.integer(as.character(Obs_I1_Q$fYear))+Obs_I1_Q$YQ.dec
 
 #Scale quarterly index:
-Obs_I1_Q$mu.std<-Obs_I1_Q$mu.r/mean(Obs_I1_Q$mu.r)
-Obs_I1_Q$ci.low.std<-Obs_I1_Q$ci.low.r/mean(Obs_I1_Q$mu.r)
-Obs_I1_Q$ci.up.std<-Obs_I1_Q$ci.up.r/mean(Obs_I1_Q$mu.r)
+#Obs_I1_Q$mu.std<-Obs_I1_Q$mu.r/mean(Obs_I1_Q$mu.r)
+#Obs_I1_Q$ci.low.std<-Obs_I1_Q$ci.low.r/mean(Obs_I1_Q$mu.r)
+#Obs_I1_Q$ci.up.std<-Obs_I1_Q$ci.up.r/mean(Obs_I1_Q$mu.r)
 
 #Rename index
-Obs_I_gam1_Above8m_Q<-Obs_I1_Q
+#Obs_I_gam1_Above8m_Q<-Obs_I1_Q
 
-Obs_I_gam1_Above8m_Q$Year<-as.integer(as.character(Obs_I_gam1_Above8m_Q$fYear))
-Obs_I_gam1_Above8m_Q<-Obs_I_gam1_Above8m_Q[order(Obs_I_gam1_Above8m_Q$Year),]
+#Obs_I_gam1_Above8m_Q$Year<-as.integer(as.character(Obs_I_gam1_Above8m_Q$fYear))
+#Obs_I_gam1_Above8m_Q<-Obs_I_gam1_Above8m_Q[order(Obs_I_gam1_Above8m_Q$Year),]
 
 # Offshore index year as numeric
 I4_index$Year<-as.integer(as.character(I4_index$fYear))
+
+#Loop inputs
+End_Year_Landings<-which(CRE_NW_Landings$Year==2021)#Last year to include landings and index data
 
 
 # SPiCT function ----------------------------------------------------------
@@ -99,8 +114,8 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     # outlier year 2008.
     
     #Landings: 
-    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:40] 
-    inp$timeC <- CRE_NW_Landings$Year[23:40] 
+    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:End_Year_Landings] 
+    inp$timeC <- CRE_NW_Landings$Year[23:End_Year_Landings] 
     
     # only index from 2006 (more reliable)
     Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
@@ -122,8 +137,8 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     # Description: Same as F.1 but fixing the surplus production curve to be symmetrical
     
     #Landings: 
-    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:40] 
-    inp$timeC <- CRE_NW_Landings$Year[23:40] 
+    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:End_Year_Landings] 
+    inp$timeC <- CRE_NW_Landings$Year[23:End_Year_Landings] 
     
     # only index from 2006 (more reliable)
     Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
@@ -147,8 +162,8 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     # Description: Same as F.2 but including a prior for the biomass depletion level
     
     #Landings: 
-    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:40] 
-    inp$timeC <- CRE_NW_Landings$Year[23:40] 
+    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:End_Year_Landings] 
+    inp$timeC <- CRE_NW_Landings$Year[23:End_Year_Landings] 
     
     # only index from 2006 (more reliable)
     Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
@@ -175,8 +190,8 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     # Description: Same as F.3 but increasing uncertainty in the first years of landings data
     
     #Landings: 
-    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:40] 
-    inp$timeC <- CRE_NW_Landings$Year[23:40] 
+    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:End_Year_Landings] 
+    inp$timeC <- CRE_NW_Landings$Year[23:End_Year_Landings] 
     
     inp$stdevfacC <- rep(1, length(inp$obsC)) 
     inp$stdevfacC[1:5] <- 2 #Extra uncertainty in the first 5 years of landings
@@ -206,8 +221,8 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     # Description: Same as F.4 but increasing uncertainty in the time series of landings
     
     #Landings: 
-    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:40] 
-    inp$timeC <- CRE_NW_Landings$Year[23:40] 
+    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:End_Year_Landings] 
+    inp$timeC <- CRE_NW_Landings$Year[23:End_Year_Landings] 
     
     inp$stdevfacC <- rep(2, length(inp$obsC)) #Extra uncertainty in the whole time series of landings
     
@@ -236,8 +251,8 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     # Description: Same as F.5 but including the standarized index from 1990-2006 from the offshore fishery
     
     #Landings: 
-    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:40] 
-    inp$timeC <- CRE_NW_Landings$Year[23:40] 
+    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:End_Year_Landings] 
+    inp$timeC <- CRE_NW_Landings$Year[23:End_Year_Landings] 
     
     inp$stdevfacC <- rep(2, length(inp$obsC)) #Extra uncertainty in the whole time series of landings
     
@@ -269,8 +284,8 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     # only from 2002 onwards
     
     #Landings: 
-    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:40] 
-    inp$timeC <- CRE_NW_Landings$Year[23:40] 
+    inp$obsC <- CRE_NW_Landings$Landings_ton_CRE[23:End_Year_Landings] 
+    inp$timeC <- CRE_NW_Landings$Year[23:End_Year_Landings] 
     
     inp$stdevfacC <- rep(2, length(inp$obsC)) #Extra uncertainty in the whole time series of landings
     
@@ -302,8 +317,8 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     # Remaining parameters as F.1
     
     #Landings: 
-    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:40] 
-    inp$timeC <- CRE_NW_LandingsR$Year[11:40] 
+    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:End_Year_Landings] 
+    inp$timeC <- CRE_NW_LandingsR$Year[11:End_Year_Landings] 
     
     # only index from 2006 (more reliable)
     Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
@@ -325,8 +340,8 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     # offshore vivier index. Remaining parameters as F.1
     
     #Landings: 
-    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:40] 
-    inp$timeC <- CRE_NW_LandingsR$Year[11:40] 
+    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:End_Year_Landings] 
+    inp$timeC <- CRE_NW_LandingsR$Year[11:End_Year_Landings] 
     
     # only index from 2006 (more reliable)
     Obs_I_gam1_Above8m<-subset(Obs_I_gam1_Above8m,Year >= 2005)
@@ -348,8 +363,8 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     # Description: Same as R.9 with extra uncertainty in the landings for the first years
     
     #Landings: 
-    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:40] 
-    inp$timeC <- CRE_NW_LandingsR$Year[11:40] 
+    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:End_Year_Landings] 
+    inp$timeC <- CRE_NW_LandingsR$Year[11:End_Year_Landings] 
     
     
     inp$stdevfacC <- rep(1, length(inp$obsC)) #Extra uncertainty in the whole time series of landings
@@ -378,8 +393,8 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     # and prior for depletion level. 
     
     #Landings: 
-    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:40] 
-    inp$timeC <- CRE_NW_LandingsR$Year[11:40] 
+    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:End_Year_Landings] 
+    inp$timeC <- CRE_NW_LandingsR$Year[11:End_Year_Landings] 
     
     
     inp$stdevfacC <- rep(1, length(inp$obsC)) #Extra uncertainty in the whole time series of landings
@@ -414,8 +429,8 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     # Description: Same as R.11 with extra uncertainty in the landings for all time series
     
     #Landings: 
-    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:40] 
-    inp$timeC <- CRE_NW_LandingsR$Year[11:40] 
+    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:End_Year_Landings] 
+    inp$timeC <- CRE_NW_LandingsR$Year[11:End_Year_Landings] 
     
     
     inp$stdevfacC <- rep(2, length(inp$obsC)) #Extra uncertainty in the whole time series of landings
@@ -449,8 +464,8 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     #at the beggining of the time series
     
     #Landings: 
-    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:40] 
-    inp$timeC <- CRE_NW_LandingsR$Year[11:40] 
+    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:End_Year_Landings] 
+    inp$timeC <- CRE_NW_LandingsR$Year[11:End_Year_Landings] 
     
     
     inp$stdevfacC <- rep(2, length(inp$obsC)) #Extra uncertainty in the whole time series of landings
@@ -478,7 +493,8 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     inp$priors$logbkfrac <- c(log(0.9), 0.5, 1) #Low or no exploitation before beginning of available data
     
     #Management interval from 2021-2022
-    inp$maninterval<-c(2021,2022)
+    inp$maninterval<-c(CRE_NW_Landings$Year[End_Year_Landings]+1,
+                       CRE_NW_Landings$Year[End_Year_Landings]+2)
   }
   if(Scenarios=="G.1"){
     scenario<-"G.1"
@@ -486,8 +502,8 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     #growth rate
     
     #Landings: 
-    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:40] 
-    inp$timeC <- CRE_NW_LandingsR$Year[11:40] 
+    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:End_Year_Landings] 
+    inp$timeC <- CRE_NW_LandingsR$Year[11:End_Year_Landings] 
     
     
     inp$stdevfacC <- rep(2, length(inp$obsC)) #Extra uncertainty in the whole time series of landings
@@ -523,8 +539,8 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     # Description: Same as G.1 but relaxing the prior for the growth rate.
     
     #Landings: 
-    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:40] 
-    inp$timeC <- CRE_NW_LandingsR$Year[11:40] 
+    inp$obsC <- CRE_NW_LandingsR$Landings_ton_CRE[11:End_Year_Landings] 
+    inp$timeC <- CRE_NW_LandingsR$Year[11:End_Year_Landings] 
     
     
     inp$stdevfacC <- rep(2, length(inp$obsC)) #Extra uncertainty in the whole time series of landings
@@ -555,7 +571,8 @@ fit.SPICT.Scenarios<-function(Scenarios) {
     inp$priors$logr <- c(log(0.3), 0.5)
     
     #Management interval from 2021-2022
-    inp$maninterval<-c(2021,2022)
+    #inp$maninterval<-c(CRE_NW_Landings$Year[End_Year_Landings]+1,
+    #                   CRE_NW_Landings$Year[End_Year_Landings]+2)
   }
   
   res <- fit.spict(inp)
@@ -576,7 +593,7 @@ res.pos <- vector("list", n.sce)
 for (s in 1:n.sce) {
   res.pos[[s]] <- fit.SPICT.Scenarios(Scenarios = Scenarios[s])
 }
-#save(res.pos,file=file.path("./SPiCT_Scenarios.RData"))
+save(res.pos,file=file.path(".","2022_Assessment_SPiCT","/SPiCT_Scenarios.RData"))
 
 
 # SPiCT diagnoses and Outputs ---------------------------------------------
@@ -589,25 +606,26 @@ res.pos[[15]][[3]]
 
 
 #Normality/ Autocorrelation
-plotspict.diagnostic(calc.osa.resid(res.pos[[16]][[3]]))
+plotspict.diagnostic(calc.osa.resid(res.pos[[15]][[3]]))
 
 #Retrospective 
-fit<-retro(res.pos[[16]][[3]])
+fit<-retro(res.pos[[15]][[3]])
 plotspict.retro(fit)
+plotspict.retro.fixed(fit)
 mohns_rho(fit, what = c("FFmsy", "BBmsy"))
 
 #Variance parameters finite
-all(is.finite(res.pos[[3]]$sd))
+all(is.finite(res.pos[[15]]$sd))
 
 #Realistic production curve
-calc.bmsyk(res.pos[[2]][[3]])
+calc.bmsyk(res.pos[[15]][[3]])
 
 # Magnitude difference
-calc.om(res.pos[[3]][[3]])
+calc.om(res.pos[[15]][[3]])
 
 #Sensitivity
 set.seed(123)
-fit <- check.ini(res.pos[[13]][[3]],ntrials = 30)
+fit <- check.ini(res.pos[[15]][[3]],ntrials = 30)
 fit$check.ini$resmat
 
 
@@ -615,10 +633,10 @@ fit$check.ini$resmat
 get.AIC(res.pos[[3]][[3]])
 
 # Results
-plotspict.data(res.pos[[7]][[2]])
+plotspict.data(res.pos[[15]][[2]])
 plot(res.pos[[15]][[3]])
 res.pos[[2]][[3]]
-plotspict.production(res.pos[[13]][[3]])
+plotspict.production(res.pos[[15]][[3]])
 plot_production(res.pos[[15]][[3]], plot_it = T)  
 
 
@@ -886,7 +904,7 @@ for (s in 1:length(sce.c)) {
 ggplot(subset(df.f,Scenario %in% c("F.4","F.6","R.12","R.13","G.1","G.2")),
               aes(x=time,y=est,colour=Scenario,grooup=Scenario))+
   geom_line(size=1)+
-  geom_ribbon(aes(ymin=ll,ymax=ul,fill=Scenario,colour=Scenario),alpha=.18)+
+  #geom_ribbon(aes(ymin=ll,ymax=ul,fill=Scenario,colour=Scenario),alpha=.18)+
   scale_x_continuous(breaks = seq(min(df.f$time),max(df.f$time),by=1))+
   labs(y="Bbmsy")+
   ggsci::scale_color_lancet()+
@@ -936,13 +954,22 @@ ggplot(df.f,aes(x=time,y=est,colour=Scenario,grooup=Scenario))+
 
 #TAC
 # Hockey-stick MSY rule with the 35th percentile
+man.timeline(res.pos[[15]][[3]])
+
 get.TAC(res.pos[[15]][[3]],
         fractiles = list(catch=0.35, bbmsy=0.35, ffmsy=0.35), breakpointB=0.5)
-rep<-manage(res.pos[[15]][[3]])
+rep<-manage(res.pos[[15]][[3]],
+            maninterval = c(2022,2023))
 plot2(rep)
 plotspict.bbmsy(rep)
 sumspict.manage(rep)
 plotspict.fb(rep,rel.axes = TRUE)
+
+# What were landings in 2020? 
+#IRL: 2001.5607
+#SCO: 1564.028
+#NI: 703.7378
+#Tot:  4269.327
 
 repIntPer <- manage(res.pos[[15]][[3]], 
                      maninterval = c(2021,2022), 
@@ -970,12 +997,12 @@ get.TAC(res.pos[[15]][[3]],breakpointB = 0.5,
 
 # Applying harvest control rules (2/3 rule)
 
-r_NW<-mean(Obs_I_gam1_Above8m$mu.std[Obs_I_gam1_Above8m$Year %in% c(2018,2019)])/mean(Obs_I_gam1_Above8m$mu.std[Obs_I_gam1_Above8m$Year %in% c(2015,2016,2017)])
+r_NW<-mean(Obs_I_gam1_Above8m$mu.std[Obs_I_gam1_Above8m$Year %in% c(2020,2021)])/mean(Obs_I_gam1_Above8m$mu.std[Obs_I_gam1_Above8m$Year %in% c(2017,2018,2019)])
 #0.5668599
 
 #Cy=Cy-1*r
-CRE_NW_Landings$Landings_ton_CRE[CRE_NW_Landings$Year %in% 2019]*r_NW
-4270*r_NW #4270 are catches in 2020
+CRE_NW_Landings$Landings_ton_CRE[CRE_NW_Landings$Year %in% 2021]*r_NW
+4521*r_NW #4270 are catches in 2020
 
 b<-Obs_I_gam1_Above8m$mu.std[Obs_I_gam1_Above8m$Year %in% 2019]/1.4*(Obs_I_gam1_Above8m$mu.std[Obs_I_gam1_Above8m$Year %in% 2019])
 #0.18
@@ -983,20 +1010,24 @@ b<-Obs_I_gam1_Above8m$mu.std[Obs_I_gam1_Above8m$Year %in% 2019]/1.4*(Obs_I_gam1_
 #f<- 
 #m<-0.95
 
-SVP_nom_index<-read.csv(file = file.path("",
+SVP_nom_index<-read.csv(file = file.path("C:/Users/ggonzales/Desktop/gmartin_work_folder/",
+                                         "Stock_Assessment/CRE/NorthWest_SPiCT/Data/SVP",
                                          "SVP_nominal_index_AllStocks.csv"))
+SVP_nom_index<-subset(SVP_nom_index,CatchType %in% "LPUE")
+
 # For the SW Irish Stock (non-standardized index)
 SW_index<-subset(SVP_nom_index,Stock %in% "SW Ireland" &
                    Target %in% "Target")
 
-r_SW<-mean(SW_index$Value[SW_index$Year %in% c(2018,2019)])/mean(SW_index$Value[SW_index$Year %in% c(2015,2016,2017)])
+r_SW<-mean(SW_index$Value[SW_index$Year %in% c(2020,2021)])/mean(SW_index$Value[SW_index$Year %in% c(2017,2018,2019)])
 #0.5593662
 
 #For the Celtic Sea Stock (non-standardized index)
 CS_index<-subset(SVP_nom_index,Stock %in% "Celtic Sea" &
                    Target %in% "Target")
+CS_index$Value[CS_index$Year == 2020]<-mean(CS_index$Value[CS_index$Year == 2019],CS_index$Value[CS_index$Year == 2018])
 
-r_CS<-mean(CS_index$Value[CS_index$Year %in% c(2018,2019)])/mean(CS_index$Value[CS_index$Year %in% c(2015,2016,2017)])
+r_CS<-mean(CS_index$Value[CS_index$Year %in% c(2020,2021)])/mean(CS_index$Value[CS_index$Year %in% c(2017,2018,20119)])
 #0.7753303
 
 
